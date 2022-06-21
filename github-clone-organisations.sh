@@ -7,7 +7,7 @@ GITHUB_CLONE_DIR="${HOME}/github.com/organisations"
 #----- USER CONFIGURABLE VARIABLES - END---------------
 
 # Github CLI is used, check if installed
-which gh
+which gh 1> /dev/null
 if [ $? -ne 0 ]; then
     echo "Github CLI is needed, install using manuals first:
         MacOS/Windows: https://github.com/cli/cli#installation
@@ -27,7 +27,7 @@ until [ $auth_tries -gt 3 ]; do
         echo -e "\nGithub CLI is not authenticated yet, proceed with on screen steps:\n"
         gh auth login
     else    
-        echo "\nGithub login succesful\n"
+        echo -e "\nGithub login succesful\n"
         ((auth_tries=4))
         continue
     fi
