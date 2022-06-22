@@ -63,7 +63,7 @@ for GH_ORGANISATION in $GH_ORGANISATION_LIST; do
             cd -
         else
             gh repo clone "$repo" "$repo" 
-        # --mirror #(add "--mirror" to command to have all the branches cloned locally)
+            # --mirror #(add "--mirror" to command to have all the branches cloned locally)
         fi
     done
 done
