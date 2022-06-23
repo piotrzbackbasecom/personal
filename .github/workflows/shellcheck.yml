@@ -1,7 +1,5 @@
 on:
   push:
-    branches:
-      - master
 
 name: 'Trigger: Push action'
 
