@@ -60,7 +60,6 @@ for GH_ORGANISATION in $GH_ORGANISATION_LIST; do
             cd "$repo" || exit
             git fetch
             cd - || exit
-            git pull
         else
             gh repo clone "$repo" "$repo" 
             # --mirror #(add "--mirror" to command to have all the branches cloned locally)
