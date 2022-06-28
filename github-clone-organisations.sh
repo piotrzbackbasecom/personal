@@ -7,7 +7,7 @@ GITHUB_CLONE_DIR="${HOME}/github.com/organisations"
 #----- USER CONFIGURABLE VARIABLES - END---------------
 
 # Github CLI is used, check if installed
-if ! which gh 1> /dev/null; then
+if ! type gh 1> /dev/null; then
     echo "Github CLI is needed, install using manuals first:
         MacOS/Windows: https://github.com/cli/cli#installation
         Linux: https://github.com/cli/cli/blob/trunk/docs/install_linux.md"
