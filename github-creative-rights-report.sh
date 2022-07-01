@@ -3,16 +3,40 @@ set -u
 #----- USER CONFIGURABLE VARIABLES - BEGINING ---------
 # Set cloning directory within user's home directory
 GITHUB_CLONE_DIR="${HOME}/github.com"
+TIMEZONE="Europe/Warsaw"
 #----- USER CONFIGURABLE VARIABLES - END---------------
 
-FIRST_DAY_OF_MONTH="1.months.ago"
-#$(date +%Y-%m-01)
-month=$(date +%B)
-echo "Generating Creative Rights Report for current month: $month"
+# Get todays day with assumption it is exactly 1st day of next month (we use to do reporting until 5th of next month)
+# We need to easly make it work on both GNU 'date' and BSD (ie. Macs) 'date' utility so we use the simplest 
+# syntax for date command possible and do an exception for January
+# The timezone is set above, defaults to Europe/Warsaw, as this is needed for Polish tax incentive accounting
+# - this is needed to have it working properly with ie. github actions
+export TZ="${TIMEZONE}"
+THIS_MONTH_NUMBER=$(date +%m)
+THIS_YEAR=$(date +%Y)
+if [ "$THIS_MONTH_NUMBER" -ne "01" ]; then
+    REPORTED_MONTH_NUMBER=$(printf "%02d" $(($THIS_MONTH_NUMBER - 1 )) )
+    REPORTED_YEAR=$THIS_YEAR
+    else
+    REPORTED_MONTH_NUMBER=12 # set to December
+    REPORTED_YEAR=$((THIS_YEAR=$THIS_YEAR-1)) || true
+fi
+REPORTED_MONTH="$REPORTED_YEAR-$REPORTED_MONTH_NUMBER"
+FIRST_DAY_OF_REPORTED_MONTH="$REPORTED_MONTH-01"
+# Get last day of previous month using either GNU date or BSD (Mac) date
+# TODO: use that instead of above hack for first day of the month
+if date --version >/dev/null 2>&1 ; then
+    LAST_DAY_OF_REPORTED_MONTH=$(date -d "$(date +%Y-%m-01) -1 day" +%d)
+    else
+    LAST_DAY_OF_REPORTED_MONTH=$(date -v-1d +%d)
+fi
+LAST_DAY_OF_REPORTED_MONTH="$REPORTED_YEAR-$REPORTED_MONTH_NUMBER-$LAST_DAY_OF_REPORTED_MONTH"
 
-REPORTS_DIR="$HOME/Creative Rights Reporting"
-if [ ! -d "$REPORTS_DIR/$month" ]; then
-    mkdir -p "$REPORTS_DIR/$month"
+echo "Generating Creative Rights Report for: $REPORTED_MONTH"
+
+REPORTS_DIR="$GITHUB_CLONE_DIR/Creative Rights Reporting"
+if [ ! -d "$REPORTS_DIR/$REPORTED_MONTH" ]; then
+    mkdir -p "$REPORTS_DIR/$REPORTED_MONTH"
 fi
 
 # Github CLI is used, check if installed
@@ -54,19 +78,19 @@ gh repo list "${githubhandle}" --limit 1000 | while read -r repo _; do
         cd "$repo" || exit
         git fetch
         reponame=$(basename `pwd`)
-        if [ ! -d "$REPORTS_DIR/$month/$githubhandle" ]; then
-            mkdir -p "$REPORTS_DIR/$month/$githubhandle"
+        if [ ! -d "$REPORTS_DIR/$REPORTED_MONTH/$githubhandle" ]; then
+            mkdir -p "$REPORTS_DIR/$REPORTED_MONTH/$githubhandle"
         fi
-        git log --branches --author="$githubhandle" --pretty=format:"%h%x09%an%x09%ad%x09%s" --since=$FIRST_DAY_OF_MONTH --until="today" > "$REPORTS_DIR/$month/$githubhandle/$reponame-creative-rights-report-$month.txt"
-        [ -s "$REPORTS_DIR/$month/$githubhandle/$reponame-creative-rights-report-$month.txt" ] && echo "Saved report" || (echo "No commits by $githubhandle in $reponame"; rm "$REPORTS_DIR/$month/$githubhandle/$reponame-creative-rights-report-$month.txt")
+        git log --branches --author="$githubhandle" --pretty=format:"%h%x09%an%x09%ad%x09%s" --since=$FIRST_DAY_OF_REPORTED_MONTH --until="yesterday" > "$REPORTS_DIR/$REPORTED_MONTH/$githubhandle/$reponame-creative-rights-report-$REPORTED_MONTH.txt"
+        [ -s "$REPORTS_DIR/$REPORTED_MONTH/$githubhandle/$reponame-creative-rights-report-$REPORTED_MONTH.txt" ] && echo "Saved report" || (echo "No commits by $githubhandle in $reponame"; rm "$REPORTS_DIR/$REPORTED_MONTH/$githubhandle/$reponame-creative-rights-report-$REPORTED_MONTH.txt")
         cd - || exit
     else
         gh repo clone "$repo" "$repo" 
         # --mirror #(add "--mirror" to command to have all the branches cloned locally)
         cd "$repo" || exit
         reponame=$(basename `pwd`)
-        git log --branches --author="$githubhandle" --pretty=format:"%h%x09%an%x09%ad%x09%s" --since=$FIRST_DAY_OF_MONTH --until="today" > "$REPORTS_DIR/$month/$githubhandle/$reponame-creative-rights-report-$month.txt"
-        [ -s "$REPORTS_DIR/$month/$githubhandle/$reponame-creative-rights-report-$month.txt" ] && echo "Saved report" || (echo "No commits by $githubhandle in $reponame"; rm "$REPORTS_DIR/$month/$githubhandle/$reponame-creative-rights-report-$month.txt")
+        git log --branches --author="$githubhandle" --pretty=format:"%h%x09%an%x09%ad%x09%s" --since=$FIRST_DAY_OF_REPORTED_MONTH --until="yesterday" > "$REPORTS_DIR/$REPORTED_MONTH/$githubhandle/$reponame-creative-rights-report-$REPORTED_MONTH.txt"
+        [ -s "$REPORTS_DIR/$REPORTED_MONTH/$githubhandle/$reponame-creative-rights-report-$REPORTED_MONTH.txt" ] && echo "Saved report" || (echo "No commits by $githubhandle in $reponame" ; rm "$REPORTS_DIR/$REPORTED_MONTH/$githubhandle/$reponame-creative-rights-report-$REPORTED_MONTH.txt")
     fi
 done
 
@@ -93,23 +117,24 @@ for GH_ORGANISATION in $GH_ORGANISATION_LIST; do
             echo "$repo already cloned, fetching changes..."
             cd "$repo" || exit
             git fetch
+            # Replace '/' with '-' for 'reponame' from 'repo' which is a path essentially 
             reponame=${repo/\//-}
-            if [ ! -d "$REPORTS_DIR/$month/organisations" ]; then
-                mkdir -p "$REPORTS_DIR/$month/organisations"
+            if [ ! -d "$REPORTS_DIR/$REPORTED_MONTH/organisations" ]; then
+                mkdir -p "$REPORTS_DIR/$REPORTED_MONTH/organisations"
             fi
-            git log --branches --author="$githubhandle" --pretty=format:"%h%x09%an%x09%ad%x09%s" --since=$FIRST_DAY_OF_MONTH --until="today" > "$REPORTS_DIR/$month/organisations/$reponame-creative-rights-report-$month.txt"
-            [ -s "$REPORTS_DIR/$month/organisations/$reponame-creative-rights-report-$month.txt" ] && echo "Saved report" || echo "No commits by $githubhandle in $reponame" && rm "$REPORTS_DIR/$month/organisations/$reponame-creative-rights-report-$month.txt"
+            git log --branches --author="$githubhandle" --pretty=format:"%h%x09%an%x09%ad%x09%s" --since=$FIRST_DAY_OF_REPORTED_MONTH --until=$LAST_DAY_OF_REPORTED_MONTH > "$REPORTS_DIR/$REPORTED_MONTH/organisations/$reponame-creative-rights-report-$REPORTED_MONTH.txt"
+            [ -s "$REPORTS_DIR/$REPORTED_MONTH/organisations/$reponame-creative-rights-report-$REPORTED_MONTH.txt" ] && echo "Saved report" || (echo "No commits by $githubhandle in $reponame"; rm "$REPORTS_DIR/$REPORTED_MONTH/organisations/$reponame-creative-rights-report-$REPORTED_MONTH.txt")
             cd - || exit
         else
             gh repo clone "$repo" "$repo" 
             # --mirror #(add "--mirror" to command to have all the branches cloned locally)
             cd "$repo" || exit
             reponame=${repo/\//-}
-            if [ ! -d "$REPORTS_DIR/$month/organisations" ]; then
-                mkdir -p "$REPORTS_DIR/$month/organisations"
+            if [ ! -d "$REPORTS_DIR/$REPORTED_MONTH/organisations" ]; then
+                mkdir -p "$REPORTS_DIR/$REPORTED_MONTH/organisations"
             fi
-            git log --branches --author="$githubhandle" --pretty=format:"%h%x09%an%x09%ad%x09%s" --since=$FIRST_DAY_OF_MONTH --until="today" > "$REPORTS_DIR/$month/organisations/$reponame-creative-rights-report-$month.txt"
-            [ -s "$REPORTS_DIR/$month/organisations/$reponame-creative-rights-report-$month.txt" ] && echo "Saved report" || echo "No commits by $githubhandle in $reponame" && rm "$REPORTS_DIR/$month/organisations/$reponame-creative-rights-report-$month.txt"
+            git log --branches --author="$githubhandle" --pretty=format:"%h%x09%an%x09%ad%x09%s" --since=$FIRST_DAY_OF_REPORTED_MONTH --until=$LAST_DAY_OF_REPORTED_MONTH > "$REPORTS_DIR/$REPORTED_MONTH/organisations/$reponame-creative-rights-report-$REPORTED_MONTH.txt"
+            [ -s "$REPORTS_DIR/$REPORTED_MONTH/organisations/$reponame-creative-rights-report-$REPORTED_MONTH.txt" ] && echo "Saved report" || (echo "No commits by $githubhandle in $reponame"; rm "$REPORTS_DIR/$REPORTED_MONTH/organisations/$reponame-creative-rights-report-$REPORTED_MONTH.txt")
         fi
     done
 done
