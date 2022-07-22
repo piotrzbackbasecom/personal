@@ -24,7 +24,7 @@ fi
 REPORTED_MONTH="$REPORTED_YEAR-$REPORTED_MONTH_NUMBER"
 FIRST_DAY_OF_REPORTED_MONTH="$REPORTED_MONTH-01"
 # Get last day of previous month using either GNU date or BSD (Mac) date
-# TODO: use that instead of above hack for first day of the month
+# (BSD version of 'date' doesn't work with '--version' option)
 if date --version >/dev/null 2>&1 ; then
     LAST_DAY_OF_REPORTED_MONTH=$(date -d "$(date +%Y-%m-01) -1 day" +%d)
     else
